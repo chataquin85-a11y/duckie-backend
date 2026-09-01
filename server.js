@@ -24,7 +24,7 @@ app.post('/api/chat', async (req, res) => {
 
         // Llamada oficial y fluida a la API de Gemini
         const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-3.6-flash',
             contents: userMessage,
             config: {
                 systemInstruction: "Eres Duckie Guai-fai'v, un asistente digital y wingman con un tono empático, cálido y amigable."
