@@ -1,40 +1,59 @@
 const express = require('express');
 const cors = require('cors');
-const { GoogleGenAI } = require('@google/genai');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: ["https://www.duckiethemus.com", "https://duckiethemus.com"],
+    methods: ["GET", "POST"],
+    credentials: true
+}));
 app.use(express.json());
 
-// Inicializa el cliente usando la variable de entorno que ya pusiste en Render
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 const PORT = process.env.PORT || 3000;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 app.get('/', (req, res) => {
-    res.send('DuckieDuck Pro Backend funcionando al 100% 🚀');
+    res.send('DuckieDuck Pro Backend funcionando al 100% 🦆');
 });
 
 app.post('/api/chat', async (req, res) => {
-    try {
-        const userMessage = req.body.message;
-        if (!userMessage) {
-            return res.status(400).json({ error: 'Falta el mensaje' });
-        }
+    const userMessage = req.body.message;
 
-        // Llamada oficial y fluida a la API de Gemini
-        const response = await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
-            contents: userMessage,
-            config: {
-                systemInstruction: "Eres Duckie Guai-fai'v, un asistente digital y wingman con un tono empático, cálido y amigable."
-            }
+    if (!userMessage) {
+        return res.status(400).json({ error: 'Falta el mensaje' });
+    }
+
+    try {
+        // Conexión directa HTTP REST (sin librerías intermedias que fallen)
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [
+                    {
+                        parts: [
+                            { text: `Instrucción del sistema: Eres Duckie Guai-fai'v, un asistente digital amigable, con un estilo de comunicación natural, casual y fluido.\n\nUsuario: ${userMessage}` }
+                        ]
+                    }
+                ]
+            })
         });
 
-        res.json({ reply: response.text });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error?.message || 'Error en la API de Google');
+        }
+
+        // Extraer la respuesta del JSON de Google
+        const aiReply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No obtuve respuesta';
+        res.json({ reply: aiReply });
+
     } catch (error) {
-        console.error("Error al conectar con Gemini:", error);
-        res.status(500).json({ error: 'Error interno del servidor al procesar la IA' });
+        console.error('Error al generar respuesta:', error);
+        res.status(500).json({ error: error.message || 'Error al procesar la respuesta con la IA' });
     }
 });
 
